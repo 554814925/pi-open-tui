@@ -99,6 +99,7 @@ export default function (pi: ExtensionAPI) {
 				resolveGlyphs(config.icons.mode),
 				hiddenThinkingLabelWidth(),
 				config.thinkingPeek.lines,
+				config.thinkingPeek.headLines,
 			),
 		);
 		peekLabelActive = true;
@@ -301,7 +302,7 @@ export default function (pi: ExtensionAPI) {
 		if (!message || message.role !== "assistant") return;
 		if (peek.phase === "done") return;
 		const parts = collectPeekParts(message.content);
-		const next = reducePeek(peek, parts);
+		const next = reducePeek(peek, parts, config.thinkingPeek.lines, config.thinkingPeek.headLines);
 		const changed = next.phase !== peek.phase || next.tail !== peek.tail;
 		peek.phase = next.phase;
 		peek.tail = next.tail;
@@ -380,7 +381,8 @@ export default function (pi: ExtensionAPI) {
 		onConfigChanged: (newConfig) => {
 			const cursorStyleChanged = config.cursorStyle !== newConfig.cursorStyle;
 			const wheelScrollLinesChanged = config.fullscreen.wheelScrollLines !== newConfig.fullscreen.wheelScrollLines;
-			const thinkingPeekLinesChanged = config.thinkingPeek.lines !== newConfig.thinkingPeek.lines;
+			const thinkingPeekLinesChanged = config.thinkingPeek.lines !== newConfig.thinkingPeek.lines
+				|| config.thinkingPeek.headLines !== newConfig.thinkingPeek.headLines;
 			const editorEnabledChanged = config.editor.enabled !== newConfig.editor.enabled;
 			saveConfig(newConfig);
 			config = newConfig;

@@ -393,6 +393,10 @@ test("cycles the thinking peek line count from General settings", async () => {
 	settings.component.handleInput("\r");
 	assert.equal(settings.getConfig().thinkingPeek.lines, 4);
 	settings.component.handleInput("\r");
+	assert.equal(settings.getConfig().thinkingPeek.lines, 5);
+	settings.component.handleInput("\r");
+	assert.equal(settings.getConfig().thinkingPeek.lines, 6);
+	settings.component.handleInput("\r");
 	assert.equal(settings.getConfig().thinkingPeek.lines, 0);
 	settings.component.handleInput("\r");
 	assert.equal(settings.getConfig().thinkingPeek.lines, 1);

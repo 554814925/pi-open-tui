@@ -35,6 +35,7 @@ const COPY = {
 			enabled: "Enabled",
 			thinkingPeek: "Thinking peek",
 			editor: "Custom editor",
+			thinkingPeekHead: "Pinned head",
 			language: "Language",
 			wheelScrollLines: "Mouse wheel speed",
 			cursorStyle: "Cursor style",
@@ -58,7 +59,8 @@ const COPY = {
 		values: {
 			on: "On",
 			off: "Off",
-			thinkingPeek: { off: "Off", one: "1 line", two: "2 lines", three: "3 lines", four: "4 lines" },
+			thinkingPeek: { off: "Off", one: "1 line", two: "2 lines", three: "3 lines", four: "4 lines", five: "5 lines", six: "6 lines" },
+			thinkingPeekHead: (count: number) => `${count} ${count === 1 ? "line" : "lines"} pinned`,
 			languages: { en: "English", zh: "简体中文" },
 			wheelLines: (count: number) => `${count} ${count === 1 ? "line" : "lines"} / notch`,
 			wheelPrompt: (count: number) => `Wheel scroll lines per notch, 1-10 (current: ${count}). Enter: apply · Esc: cancel`,
@@ -74,6 +76,7 @@ const COPY = {
 			enabled: "启用",
 			thinkingPeek: "思考预览",
 			editor: "自定义输入框",
+			thinkingPeekHead: "固定抬头",
 			language: "语言",
 			wheelScrollLines: "鼠标滚轮速度",
 			cursorStyle: "光标样式",
@@ -97,7 +100,8 @@ const COPY = {
 		values: {
 			on: "开启",
 			off: "关闭",
-			thinkingPeek: { off: "关闭", one: "单行", two: "双行", three: "三行", four: "四行" },
+			thinkingPeek: { off: "关闭", one: "单行", two: "双行", three: "三行", four: "四行", five: "五行", six: "六行" },
+			thinkingPeekHead: (count: number) => `固定 ${count} 行`,
 			languages: { en: "English", zh: "简体中文" },
 			wheelLines: (count: number) => `每格 ${count} 行`,
 			wheelPrompt: (count: number) => `滚轮每格滚动行数（当前 ${count}，范围 1-10），输入后 Enter 应用 · Esc 取消`,
@@ -116,6 +120,8 @@ function formatThinkingPeekLines(lines: ThinkingPeekLines, copy: SettingsCopy): 
 		copy.values.thinkingPeek.two,
 		copy.values.thinkingPeek.three,
 		copy.values.thinkingPeek.four,
+		copy.values.thinkingPeek.five,
+		copy.values.thinkingPeek.six,
 	];
 	return values[lines] ?? values[0];
 }
@@ -180,10 +186,27 @@ function toggleEditor(config: OpenTuiConfig): OpenTuiConfig {
 }
 
 function cycleThinkingPeek(config: OpenTuiConfig): OpenTuiConfig {
-	const next = ([1, 2, 3, 4, 0] as const)[config.thinkingPeek.lines] ?? 0;
+	const next = ([1, 2, 3, 4, 5, 6, 0] as const)[config.thinkingPeek.lines] ?? 0;
 	return {
 		...config,
-		thinkingPeek: { lines: next },
+		thinkingPeek: {
+			...config.thinkingPeek,
+			lines: next,
+			headLines: Math.min(config.thinkingPeek.headLines, next),
+		},
+	};
+}
+
+/** Cycles the pinned head between 0 and the current total line count. */
+function cycleThinkingPeekHead(config: OpenTuiConfig): OpenTuiConfig {
+	const max = config.thinkingPeek.lines;
+	if (max <= 0) return config;
+	return {
+		...config,
+		thinkingPeek: {
+			...config.thinkingPeek,
+			headLines: (config.thinkingPeek.headLines + 1) % (max + 1),
+		},
 	};
 }
 
@@ -198,6 +221,13 @@ function buildFeaturesItems(config: OpenTuiConfig, copy: SettingsCopy): SettingI
 			currentValue: copy.values.wheelLines(config.fullscreen.wheelScrollLines),
 		},
 		{ id: "thinkingPeek", label: copy.labels.thinkingPeek, currentValue: formatThinkingPeekLines(config.thinkingPeek.lines, copy) },
+		{
+			id: "thinkingPeekHead",
+			label: copy.labels.thinkingPeekHead,
+			currentValue: config.thinkingPeek.lines > 0
+				? copy.values.thinkingPeekHead(config.thinkingPeek.headLines)
+				: copy.values.off,
+		},
 		{ id: "editor", label: copy.labels.editor, currentValue: flag(config.editor.enabled) },
 	];
 }
@@ -260,6 +290,7 @@ function handleSettingChange(
 		if (itemId === "enabled") return toggleEnabled(config);
 		if (itemId === "settingsLanguage") return toggleLanguage(config);
 		if (itemId === "thinkingPeek") return cycleThinkingPeek(config);
+		if (itemId === "thinkingPeekHead") return cycleThinkingPeekHead(config);
 		if (itemId === "editor") return toggleEditor(config);
 	}
 	if (tab === "icons") {

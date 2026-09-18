@@ -3,7 +3,7 @@ import type { IconGlyphs } from "./icons.ts";
 import { sanitizeStatus } from "./utils.ts";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-const MAX_PEEK_LINES = 4;
+const MAX_PEEK_LINES = 6;
 const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 export type PeekPhase = "idle" | "thinking" | "done";
@@ -35,8 +35,13 @@ const normalizePeekLineCount = (lineCount: number): number => Math.max(1, Math.m
  * - done + thinking        -> done    (never restart the spinner)
  * - any + text only        -> idle stays idle (plain answer, nothing to peek)
  */
-export function reducePeek(prev: PeekState, parts: PeekMessageParts): PeekState {
-	const tail = parts.thinking ? peekTail(parts.thinking, MAX_PEEK_LINES) : prev.tail;
+export function reducePeek(
+	prev: PeekState,
+	parts: PeekMessageParts,
+	lineCount = MAX_PEEK_LINES,
+	headLineCount = 0,
+): PeekState {
+	const tail = parts.thinking ? peekTail(parts.thinking, lineCount, headLineCount) : prev.tail;
 	let phase = prev.phase;
 	if (parts.thinking && phase === "idle") phase = "thinking";
 	if (parts.text && phase === "thinking") phase = "done";
@@ -70,22 +75,42 @@ export function collectPeekParts(content: unknown): PeekMessageParts {
 }
 
 /**
- * Extract the last non-empty logical lines of the thinking text, whitespace-
- * normalized. NOT width-bounded: clipping to the terminal happens at render
- * time in buildPeekLabel/clipTail, so wide terminals get to see more of it.
+ * Extract the non-empty logical lines of the thinking text, whitespace-
+ * normalized: the opening `headLineCount` lines (pinned head) followed by the
+ * last `lineCount - headLineCount` lines (scrolling tail). NOT width-bounded:
+ * clipping to the terminal happens at render time in buildPeekLabel/clipTail,
+ * so wide terminals get to see more of it.
  */
-export function peekTail(fullThinking: string, lineCount = 1): string {
+export function peekTail(fullThinking: string, lineCount = 1, headLineCount = 0): string {
 	if (!fullThinking) return "";
 	const count = normalizePeekLineCount(lineCount);
-	const lines: string[] = [];
+	const requestedHead = Number.isFinite(headLineCount) ? Math.floor(headLineCount) : 0;
+	const head = Math.max(0, Math.min(requestedHead, count));
+	const tail = count - head;
+
+	// Common case (no pinned head): walk backwards and avoid indexing every line.
+	const tailLines: string[] = [];
 	let end = fullThinking.length;
-	while (end > 0 && lines.length < count) {
+	while (end > 0 && tailLines.length < tail) {
 		const start = fullThinking.lastIndexOf("\n", end - 1) + 1;
 		const line = fullThinking.slice(start, end).replace(/\s+/g, " ").trim();
-		if (line) lines.push(line);
+		if (line) tailLines.push(line);
 		end = start - 1;
 	}
-	return lines.reverse().join("\n");
+	tailLines.reverse();
+
+	if (head === 0) return tailLines.join("\n");
+
+	// A pinned head needs the opening lines, so only then scan the whole text.
+	// Short thinking is returned in full instead of duplicating lines.
+	const allLines: string[] = [];
+	for (const raw of fullThinking.split("\n")) {
+		const line = raw.replace(/\s+/g, " ").trim();
+		if (line) allLines.push(line);
+	}
+	if (allLines.length <= count) return allLines.join("\n");
+	const tailPart = tail > 0 ? allLines.slice(-tail) : [];
+	return [...allLines.slice(0, head), ...tailPart].join("\n");
 }
 
 /**
@@ -122,10 +147,13 @@ export function buildPeekLabel(
 	glyphs: IconGlyphs,
 	width: number,
 	lineCount = 1,
+	headLineCount = 0,
 ): string {
 	const w = Math.max(1, Math.floor(width));
 	const prefix = `${glyphs.thinking} think`;
 	const count = normalizePeekLineCount(lineCount);
+	const requestedHead = Number.isFinite(headLineCount) ? Math.floor(headLineCount) : 0;
+	const head = Math.max(0, Math.min(requestedHead, count));
 	const fit = (line: string): string => truncateToWidth(line, w, "…");
 	switch (state.phase) {
 		case "thinking": {
@@ -140,26 +168,29 @@ export function buildPeekLabel(
 				.split("\n")
 				.map((tail) => sanitizeStatus(tail))
 				.filter(Boolean)
-				.slice(-count);
-			const latest = safeLines.at(-1) ?? "";
+				.slice(0, count);
 			const lineWithMarker = (tail: string): string => fit(tail ? `${marker} ${tail}` : marker);
 			const renderRows = (rows: string[]): string =>
 				rows
 					.map((row, index) => (index === 0 ? lineWithMarker(row) : fit(`${thoughtIndent}${row}`)))
 					.join("\n");
-			if (count >= 2) {
-				const window = clipTail(latest, contentWidth * count);
-				const latestWrapped = wrapTextWithAnsi(window, Math.max(1, contentWidth));
-				if (latestWrapped.length > 1) {
-					// Word wrapping may add short rows; always retain the newest content.
-					return renderRows(latestWrapped.slice(-count));
-				}
-			}
-			const firstTail = clipTail(count >= 2 ? safeLines[0] ?? "" : latest, contentWidth);
-			if (count < 2 || safeLines.length < 2) return lineWithMarker(firstTail);
-			// Align the latest line with the first line's thinking text, not with
-			// the status marker.
-			return renderRows(safeLines.slice(-count).map((line) => clipTail(line, contentWidth)));
+
+			// Pinned head: keep the opening lines of the thinking text visible so the
+			// label does not shift on every token.
+			const headRows = safeLines.slice(0, head).map((line) => clipTail(line, contentWidth));
+			const tailLines = safeLines.slice(head);
+			if (tailLines.length === 0) return headRows.length > 0 ? renderRows(headRows) : fit(marker);
+
+			const tailBudget = Math.max(1, count - headRows.length);
+			const latest = tailLines.at(-1) ?? "";
+			const window = clipTail(latest, contentWidth * tailBudget);
+			const latestWrapped = wrapTextWithAnsi(window, Math.max(1, contentWidth));
+			// Word wrapping may add short rows; always retain the newest content.
+			// Wrapping stays inside the tail budget so the head rows survive.
+			const tailRows = latestWrapped.length > 1
+				? latestWrapped.slice(-tailBudget)
+				: tailLines.slice(-tailBudget).map((line) => clipTail(line, contentWidth));
+			return renderRows([...headRows, ...tailRows]);
 		}
 		case "done":
 			return fit(`${prefix} ${glyphs.done}`);

@@ -9,7 +9,7 @@ import type { IconMode } from "./icons.ts";
 
 export type SettingsLanguage = "en" | "zh";
 export type CursorStyle = "block" | "bar" | "underline";
-export type ThinkingPeekLines = 0 | 1 | 2 | 3 | 4;
+export type ThinkingPeekLines = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export type { IconMode } from "./icons.ts";
 
@@ -55,7 +55,10 @@ export interface EditorConfig {
 }
 
 export interface ThinkingPeekConfig {
+	/** 显示的总行数上限（0 表示关闭）。 */
 	lines: ThinkingPeekLines;
+	/** 顶部固定展示思考开头的行数（0 表示全部展示最新内容）。 */
+	headLines: number;
 }
 
 export interface FullscreenConfig {
@@ -122,6 +125,7 @@ export const DEFAULT_CONFIG: OpenTuiConfig = {
 	},
 	thinkingPeek: {
 		lines: 1,
+		headLines: 0,
 	},
 };
 
@@ -131,9 +135,16 @@ export function getConfigPath(): string {
 }
 
 function normalizeThinkingPeekLines(value: unknown): ThinkingPeekLines {
-	return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 4
+	return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 6
 		? (value as ThinkingPeekLines)
 		: DEFAULT_CONFIG.thinkingPeek.lines;
+}
+
+function normalizeThinkingPeekHeadLines(value: unknown, lines: number): number {
+	if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+		return DEFAULT_CONFIG.thinkingPeek.headLines;
+	}
+	return Math.min(value, lines);
 }
 
 function deepMerge<T>(base: T, override: unknown): T {
@@ -195,6 +206,10 @@ export function loadConfig(notify?: (msg: string, level: "warning" | "info") => 
 			config.thinkingPeek = structuredClone(DEFAULT_CONFIG.thinkingPeek);
 		} else {
 			config.thinkingPeek.lines = normalizeThinkingPeekLines(config.thinkingPeek.lines);
+			config.thinkingPeek.headLines = normalizeThinkingPeekHeadLines(
+				config.thinkingPeek.headLines,
+				config.thinkingPeek.lines,
+			);
 		}
 		return config;
 	} catch (err) {
