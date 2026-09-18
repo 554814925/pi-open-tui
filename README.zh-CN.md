@@ -10,7 +10,7 @@
 
 - **Pi 顶栏**：显示模型、思考等级、当前目录和常用斜杠命令提示
 - **自适应底栏**：集中展示 Git 状态、运行环境、上下文用量、Token、费用和扩展状态
-- **带边框的编辑器**：支持块状、竖线和下划线三种光标样式
+- **带边框的编辑器**：支持块状、竖线和下划线三种光标样式；可通过 `editor.enabled` 关闭以改用 Pi 原生输入框
 - **项目环境感知**：识别 50 多种运行环境，并展示 ahead/behind、已暂存、已修改、未跟踪、stash 和 detached HEAD 等 Git 状态
 - **单轮遥测**：展示 TPS、首 Token 延迟（TTFT）、耗时、停顿、Token 数量和模型标价速率
 - **思考预览**：模型工作时，在 Pi 隐藏思考块的 `Thinking...` 位置显示实时字幕，展示推理内容的末尾片段
@@ -58,6 +58,9 @@ pi -e npm:pi-open-tui
   "enabled": true,
   "settingsLanguage": "zh",
   "cursorStyle": "block",
+  "editor": {
+    "enabled": true
+  },
   "fullscreen": {
     "wheelScrollLines": 4
   },
@@ -84,10 +87,14 @@ pi -e npm:pi-open-tui
     "duration": true,
     "tokens": true,
     "stalls": true,
-    "cost": true
+    "cost": true,
+    "labels": {
+      "ttft": "首字",
+      "duration": "耗时"
+    }
   },
   "thinkingPeek": {
-    "lines": 1
+    "lines": 4
   }
 }
 ```
@@ -102,7 +109,9 @@ pi -e npm:pi-open-tui
 | `icons.mode` | `auto`、`nerd`、`ascii` | 控制底栏和遥测通知使用的图标 |
 | `footerSegments` | 布尔开关 | 分别控制底栏中的各项数据 |
 | `telemetry` | 布尔开关 | 控制遥测总开关和各项指标 |
-| `thinkingPeek.lines` | `0`、`1`、`2` | 关闭、单行或双行思考预览 |
+| `telemetry.labels` | 字符串 | 覆盖遥测各段的显示文案（`tps`、`ttft`、`duration`、`input`、`output`、`stalls`、`cost`），留空则使用内置默认 |
+| `editor.enabled` | 布尔值 | 设为 `false` 时不接管输入框，改用 Pi 原生编辑器；思考预览仍然可用 |
+| `thinkingPeek.lines` | `0`-`4` | 关闭，或显示 1-4 行思考预览 |
 
 `sessionName` 仅在会话有名称时显示；`hostname` 会显示主机名的短名称（主机名的第一个标签，例如从 `mba.example.com` 显示为 `mba`），并使用服务器图标；`gitCommit` 会在 detached HEAD 状态下显示短哈希和标签；关闭 `extensionStatuses` 会隐藏整行扩展状态，其中也包括 MCP 状态。
 
@@ -134,7 +143,7 @@ TPS 的计算方式是：将本次运行中服务商报告的全部 Assistant �
           最新一条思考
 ```
 
-该字幕仅在模型真正输出推理内容后出现，非推理模型不会显示。可见性由 Pi 自身的 Hide thinking 开关控制，切换后立即生效。每一行都按*显示宽度*截断（全角字符计 2 列），因此包含中文的思考文本也不会溢出终端。可在 `/open-tui` 的**常规 → 思考预览**中切换，或直接修改 `open-tui.json` 中的 `thinkingPeek.lines`。
+该字幕仅在模型真正输出推理内容后出现，非推理模型不会显示。可见性由 Pi 自身的 Hide thinking 开关控制，切换后立即生效。每一行都按*显示宽度*截断（全角字符计 2 列），因此包含中文的思考文本也不会溢出终端。可在 `/open-tui` 的**常规 → 思考预览**中循环切换关闭 / 1-4 行，或直接修改 `open-tui.json` 中的 `thinkingPeek.lines`。
 
 ## 本地开发
 

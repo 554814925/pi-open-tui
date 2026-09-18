@@ -9,7 +9,7 @@ import type { IconMode } from "./icons.ts";
 
 export type SettingsLanguage = "en" | "zh";
 export type CursorStyle = "block" | "bar" | "underline";
-export type ThinkingPeekLines = 0 | 1 | 2;
+export type ThinkingPeekLines = 0 | 1 | 2 | 3 | 4;
 
 export type { IconMode } from "./icons.ts";
 
@@ -27,6 +27,17 @@ export interface FooterSegments {
 	extensionStatuses: boolean;
 }
 
+export interface TelemetryLabels {
+	/** 留空则使用内置默认（图标 + 英文缩写）。 */
+	tps: string;
+	ttft: string;
+	duration: string;
+	input: string;
+	output: string;
+	stalls: string;
+	cost: string;
+}
+
 export interface TelemetryConfig {
 	enabled: boolean;
 	tps: boolean;
@@ -35,6 +46,12 @@ export interface TelemetryConfig {
 	tokens: boolean;
 	stalls: boolean;
 	cost: boolean;
+	labels: TelemetryLabels;
+}
+
+export interface EditorConfig {
+	/** false 时不接管输入框，改用 Pi 原生编辑器。 */
+	enabled: boolean;
 }
 
 export interface ThinkingPeekConfig {
@@ -49,6 +66,7 @@ export interface OpenTuiConfig {
 	enabled: boolean;
 	settingsLanguage: SettingsLanguage;
 	cursorStyle: CursorStyle;
+	editor: EditorConfig;
 	fullscreen: FullscreenConfig;
 	icons: {
 		mode: IconMode;
@@ -62,6 +80,9 @@ export const DEFAULT_CONFIG: OpenTuiConfig = {
 	enabled: true,
 	settingsLanguage: "en",
 	cursorStyle: "block",
+	editor: {
+		enabled: true,
+	},
 	fullscreen: {
 		wheelScrollLines: DEFAULT_FULLSCREEN_WHEEL_SCROLL_LINES,
 	},
@@ -89,6 +110,15 @@ export const DEFAULT_CONFIG: OpenTuiConfig = {
 		tokens: true,
 		stalls: true,
 		cost: true,
+		labels: {
+			tps: "",
+			ttft: "",
+			duration: "",
+			input: "",
+			output: "",
+			stalls: "",
+			cost: "",
+		},
 	},
 	thinkingPeek: {
 		lines: 1,
@@ -101,7 +131,9 @@ export function getConfigPath(): string {
 }
 
 function normalizeThinkingPeekLines(value: unknown): ThinkingPeekLines {
-	return value === 0 || value === 1 || value === 2 ? value : DEFAULT_CONFIG.thinkingPeek.lines;
+	return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 4
+		? (value as ThinkingPeekLines)
+		: DEFAULT_CONFIG.thinkingPeek.lines;
 }
 
 function deepMerge<T>(base: T, override: unknown): T {

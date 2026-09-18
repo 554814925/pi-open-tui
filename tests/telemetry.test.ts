@@ -172,6 +172,7 @@ test("uses footer semantics and respects telemetry segment settings", () => {
 	assert.deepEqual(colors, ["accent", "text", "success", "accent", "success", "warning", "warning", "dim"]);
 
 	const hidden: typeof DEFAULT_CONFIG.telemetry = {
+		...DEFAULT_CONFIG.telemetry,
 		enabled: false,
 		tps: false,
 		ttft: false,

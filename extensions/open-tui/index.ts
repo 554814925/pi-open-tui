@@ -130,7 +130,8 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 		if (!active) {
-			cleanupHeader = installHeader(pi, ctx);
+			const headerInstall = installHeader(pi, ctx);
+			cleanupHeader = headerInstall.cleanup;
 			cleanupFooter = installFooter(
 				ctx,
 				() => state,
@@ -145,7 +146,10 @@ export default function (pi: ExtensionAPI) {
 					},
 				},
 			);
-			editor = installEditor(pi, ctx, config.cursorStyle, config.fullscreen.wheelScrollLines);
+			editor = installEditor(pi, ctx, config.cursorStyle, config.fullscreen.wheelScrollLines, {
+				enabled: config.editor.enabled,
+				getTui: headerInstall.getTui,
+			});
 			active = true;
 		}
 	};
@@ -377,6 +381,7 @@ export default function (pi: ExtensionAPI) {
 			const cursorStyleChanged = config.cursorStyle !== newConfig.cursorStyle;
 			const wheelScrollLinesChanged = config.fullscreen.wheelScrollLines !== newConfig.fullscreen.wheelScrollLines;
 			const thinkingPeekLinesChanged = config.thinkingPeek.lines !== newConfig.thinkingPeek.lines;
+			const editorEnabledChanged = config.editor.enabled !== newConfig.editor.enabled;
 			saveConfig(newConfig);
 			config = newConfig;
 			if (newConfig.thinkingPeek.lines === 0 || !newConfig.enabled) {
@@ -390,6 +395,10 @@ export default function (pi: ExtensionAPI) {
 			}
 			if (wheelScrollLinesChanged && active && editor) {
 				editor.setWheelScrollLines(newConfig.fullscreen.wheelScrollLines);
+			}
+			if (editorEnabledChanged && lastCtx && active) {
+				uninstallUi(lastCtx);
+				applyUi(lastCtx);
 			}
 			if (lastCtx) {
 				pendingUiChange = getPendingUiChange(newConfig.enabled, active);

@@ -10,7 +10,7 @@ A polished terminal interface for the [Pi](https://pi.dev) coding agent. It brin
 
 - **Pi header** with model, thinking level, working directory, and useful slash-command hints
 - **Responsive footer** with Git state, detected runtime, context usage, token counts, cost, and extension status
-- **Framed editor** with block, bar, and underline cursor styles
+- **Framed editor** with block, bar, and underline cursor styles (disable via `editor.enabled` to keep Pi's native input box)
 - **Project awareness** for 50+ runtimes and detailed Git states, including ahead/behind, staged, modified, untracked, stashed, and detached HEAD
 - **Turn telemetry** for TPS, time to first token (TTFT), duration, stalls, tokens, and list-price rate
 - **Thinking peek**: an inline ticker replaces Pi's hidden `Thinking...` label with the tail of the model's reasoning while it works
@@ -58,6 +58,9 @@ Run `/open-tui` to open the settings dialog. It provides **General**, **Appearan
   "enabled": true,
   "settingsLanguage": "en",
   "cursorStyle": "block",
+  "editor": {
+    "enabled": true
+  },
   "fullscreen": {
     "wheelScrollLines": 4
   },
@@ -84,10 +87,14 @@ Run `/open-tui` to open the settings dialog. It provides **General**, **Appearan
     "duration": true,
     "tokens": true,
     "stalls": true,
-    "cost": true
+    "cost": true,
+    "labels": {
+      "ttft": "TTFT",
+      "duration": "took"
+    }
   },
   "thinkingPeek": {
-    "lines": 1
+    "lines": 4
   }
 }
 ```
@@ -102,7 +109,9 @@ Key options:
 | `icons.mode` | `auto`, `nerd`, `ascii` | Controls footer and telemetry icons |
 | `footerSegments` | Boolean flags | Shows or hides individual footer data |
 | `telemetry` | Boolean flags | Enables telemetry and its individual measurements |
-| `thinkingPeek.lines` | `0`, `1`, `2` | Off, one-line, or two-line hidden thinking preview |
+| `telemetry.labels` | Strings | Overrides the telemetry segment labels (`tps`, `ttft`, `duration`, `input`, `output`, `stalls`, `cost`); empty values keep the built-in defaults |
+| `editor.enabled` | Boolean | When `false`, Pi's native editor is used instead of the framed one; the thinking peek still works |
+| `thinkingPeek.lines` | `0`-`4` | Off, or a 1-4 line hidden thinking preview |
 
 `sessionName` appears only when the session has a name. `hostname` shows the short host name (first label of the machine's host name, e.g. `mba` from `mba.example.com`) with a server icon. `gitCommit` shows the short hash and tag in detached HEAD state. Disabling `extensionStatuses` hides the entire extension status line, including MCP status.
 
@@ -134,7 +143,7 @@ When Pi's **Hide thinking** setting is enabled, pi-open-tui shows a compact tick
           latest thought
 ```
 
-The ticker appears only once the model actually streams reasoning, so non-reasoning models never show it. Pi's own Hide thinking toggle controls visibility; changing it takes effect immediately. Each row is truncated by *visible* width, so CJK-wide thinking text cannot overflow. Configure it from **General → Thinking peek** in `/open-tui`, or via `thinkingPeek.lines` in `open-tui.json`.
+The ticker appears only once the model actually streams reasoning, so non-reasoning models never show it. Pi's own Hide thinking toggle controls visibility; changing it takes effect immediately. Each row is truncated by *visible* width, so CJK-wide thinking text cannot overflow. Configure it from **General → Thinking peek** in `/open-tui` (cycles off and 1-4 lines), or via `thinkingPeek.lines` in `open-tui.json`.
 
 ## Local development
 

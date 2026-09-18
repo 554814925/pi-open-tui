@@ -3,7 +3,7 @@ import type { IconGlyphs } from "./icons.ts";
 import { sanitizeStatus } from "./utils.ts";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-const MAX_PEEK_LINES = 2;
+const MAX_PEEK_LINES = 4;
 const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 export type PeekPhase = "idle" | "thinking" | "done";
@@ -113,8 +113,8 @@ export function clipTail(text: string, budget: number): string {
 /**
  * Build the label Pi renders in its hidden-thinking block. `width` is a
  * conservative budget that keeps each native Text row within the terminal.
- * In two-line mode, an overflowing latest logical line uses both rows for
- * its continuation instead of retaining the previous logical line.
+ * In multi-line mode, an overflowing latest logical line uses the available
+ * rows for its continuation instead of retaining earlier logical lines.
  */
 export function buildPeekLabel(
 	state: PeekState,
@@ -143,22 +143,23 @@ export function buildPeekLabel(
 				.slice(-count);
 			const latest = safeLines.at(-1) ?? "";
 			const lineWithMarker = (tail: string): string => fit(tail ? `${marker} ${tail}` : marker);
+			const renderRows = (rows: string[]): string =>
+				rows
+					.map((row, index) => (index === 0 ? lineWithMarker(row) : fit(`${thoughtIndent}${row}`)))
+					.join("\n");
 			if (count >= 2) {
 				const window = clipTail(latest, contentWidth * count);
 				const latestWrapped = wrapTextWithAnsi(window, Math.max(1, contentWidth));
 				if (latestWrapped.length > 1) {
 					// Word wrapping may add short rows; always retain the newest content.
-					const first = latestWrapped.at(-2) ?? "";
-					const second = latestWrapped.at(-1) ?? "";
-					return `${lineWithMarker(first)}\n${fit(`${thoughtIndent}${second}`)}`;
+					return renderRows(latestWrapped.slice(-count));
 				}
 			}
 			const firstTail = clipTail(count >= 2 ? safeLines[0] ?? "" : latest, contentWidth);
 			if (count < 2 || safeLines.length < 2) return lineWithMarker(firstTail);
 			// Align the latest line with the first line's thinking text, not with
 			// the status marker.
-			const secondTail = clipTail(latest, contentWidth);
-			return `${lineWithMarker(firstTail)}\n${fit(secondTail ? `${thoughtIndent}${secondTail}` : thoughtIndent)}`;
+			return renderRows(safeLines.slice(-count).map((line) => clipTail(line, contentWidth)));
 		}
 		case "done":
 			return fit(`${prefix} ${glyphs.done}`);

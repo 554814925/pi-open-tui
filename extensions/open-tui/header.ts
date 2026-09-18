@@ -229,16 +229,25 @@ export class OpenTuiHeader implements Component {
 	dispose(): void {}
 }
 
-export function installHeader(pi: ExtensionAPI, ctx: ExtensionContext): () => void {
+export function installHeader(
+	pi: ExtensionAPI,
+	ctx: ExtensionContext,
+): { cleanup: () => void; getTui: () => TUI | undefined } {
 	let header: OpenTuiHeader | undefined;
+	let activeTui: TUI | undefined;
 	ctx.ui.setHeader((tui) => {
+		activeTui = tui;
 		header?.dispose();
 		header = new OpenTuiHeader(pi, ctx, tui);
 		return header;
 	});
-	return () => {
-		header?.dispose();
-		header = undefined;
-		ctx.ui.setHeader(undefined);
+	return {
+		cleanup: () => {
+			header?.dispose();
+			header = undefined;
+			activeTui = undefined;
+			ctx.ui.setHeader(undefined);
+		},
+		getTui: () => activeTui,
 	};
 }

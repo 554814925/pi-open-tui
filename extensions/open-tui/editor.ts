@@ -233,11 +233,19 @@ export class OpenTuiEditor extends CustomEditor {
 	}
 }
 
+export interface InstallEditorOptions {
+	/** false 时不接管输入框，改用 Pi 原生编辑器。 */
+	enabled: boolean;
+	/** 未接管输入框时，用于获取 TUI 引用（思考预览需要）。 */
+	getTui: () => TUI | undefined;
+}
+
 export function installEditor(
 	_pi: ExtensionAPI,
 	ctx: ExtensionContext,
 	cursorStyle: CursorStyle = "block",
 	wheelScrollLines = DEFAULT_FULLSCREEN_WHEEL_SCROLL_LINES,
+	options: InstallEditorOptions = { enabled: true, getTui: () => undefined },
 ) {
 	let activeTui: TUI | undefined;
 	let activeEditor: OpenTuiEditor | undefined;
@@ -245,29 +253,30 @@ export function installEditor(
 	let currentCursorStyle = cursorStyle;
 	let currentWheelScrollLines = wheelScrollLines;
 	let hiddenThinkingTarget: HiddenThinkingLabelComponent | undefined;
-	const getActiveTui = (): TUI => {
-		if (!activeTui) throw new Error("Open TUI editor is not mounted");
-		return activeTui;
-	};
+	// 接管输入框时用自己的 TUI；否则回退到调用方注入的引用（如 header）。
+	const resolveTui = (): TUI | undefined => activeTui ?? options.getTui();
 
-	ctx.ui.setEditorComponent((tui, editorTheme, keybindings) => {
-		activeTui = tui;
-		hiddenThinkingTarget = undefined;
-		applyFullscreenWheelScrollLines(tui, currentWheelScrollLines);
-		previousHardwareCursor = tui.getShowHardwareCursor();
-		activeEditor = new OpenTuiEditor(tui, editorTheme, keybindings, currentCursorStyle);
-		return activeEditor;
-	});
+	if (options.enabled) {
+		ctx.ui.setEditorComponent((tui, editorTheme, keybindings) => {
+			activeTui = tui;
+			hiddenThinkingTarget = undefined;
+			applyFullscreenWheelScrollLines(tui, currentWheelScrollLines);
+			previousHardwareCursor = tui.getShowHardwareCursor();
+			activeEditor = new OpenTuiEditor(tui, editorTheme, keybindings, currentCursorStyle);
+			return activeEditor;
+		});
+	}
 	return {
 		getViewportWidth(): number {
-			const columns = getActiveTui().terminal.columns;
+			const columns = resolveTui()?.terminal.columns;
 			if (typeof columns !== "number" || !Number.isFinite(columns)) {
 				throw new Error("Open TUI editor terminal has an invalid width");
 			}
 			return Math.max(1, Math.floor(columns));
 		},
 		setLatestHiddenThinkingLabel(label: string): void {
-			const tui = getActiveTui();
+			const tui = resolveTui();
+			if (!tui) return;
 			hiddenThinkingTarget ??= findLatestHiddenThinkingLabel(tui);
 			hiddenThinkingTarget.setHiddenThinkingLabel(label);
 			tui.requestRender();
@@ -281,11 +290,12 @@ export function installEditor(
 		},
 		setWheelScrollLines(nextWheelScrollLines: number): void {
 			currentWheelScrollLines = nextWheelScrollLines;
-			if (activeTui) applyFullscreenWheelScrollLines(activeTui, currentWheelScrollLines);
+			const tui = resolveTui();
+			if (tui) applyFullscreenWheelScrollLines(tui, currentWheelScrollLines);
 		},
 		cleanup(): void {
 			hiddenThinkingTarget = undefined;
-			ctx.ui.setEditorComponent(undefined);
+			if (options.enabled) ctx.ui.setEditorComponent(undefined);
 			if (activeTui) {
 				if (currentCursorStyle !== "block") activeTui.terminal.write(DEFAULT_CURSOR_STYLE_SEQUENCE);
 				if (previousHardwareCursor !== undefined) activeTui.setShowHardwareCursor(previousHardwareCursor);
