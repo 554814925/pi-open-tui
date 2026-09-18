@@ -278,28 +278,31 @@ export function formatTurnTelemetry(
 	iconMode: IconMode,
 ): string {
 	const glyphs = resolveGlyphs(iconMode);
-	// 自定义标签留空时回退到内置默认（图标 + 英文缩写），保证默认配置下输出与原先一致。
-	const label = (custom: string, fallback: string): string => custom || fallback;
+	// 未配置的段回退到内置默认（图标 + 英文缩写）；显式设为空字符串则隐藏该段标签。
+	const label = (custom: string | undefined, fallback: string): string =>
+		custom === undefined ? fallback : custom;
+	// 丢弃空片段，这样用 "" 去掉标签时不会留下多余空格。
+	const segment = (...bits: string[]): string => bits.filter(Boolean).join(" ");
 	const parts: string[] = [];
 	if (config.tps) {
 		const value = telemetry.tps === null ? "—" : `${telemetry.tps.toFixed(1)} tok/s`;
-		parts.push(theme.fg(telemetry.tps === null ? "muted" : "accent", `${label(config.labels.tps, `${glyphs.speed} TPS`)} ${value}`));
+		parts.push(theme.fg(telemetry.tps === null ? "muted" : "accent", segment(label(config.labels.tps, `${glyphs.speed} TPS`), value)));
 	}
 	if (config.ttft) {
-		parts.push(theme.fg("text", `${label(config.labels.ttft, `${glyphs.latency} TTFT`)} ${formatTurnDuration(telemetry.ttftMs)}`));
+		parts.push(theme.fg("text", segment(label(config.labels.ttft, `${glyphs.latency} TTFT`), formatTurnDuration(telemetry.ttftMs))));
 	}
 	if (config.duration) {
-		parts.push(theme.fg("success", `${label(config.labels.duration, glyphs.done)} ${formatTurnDuration(telemetry.totalMs)}`));
+		parts.push(theme.fg("success", segment(label(config.labels.duration, glyphs.done), formatTurnDuration(telemetry.totalMs))));
 	}
 	if (config.tokens) {
-		parts.push(theme.fg("accent", `${label(config.labels.input, glyphs.input)} ${formatInputBreakdown(telemetry.inputTokens, telemetry.cacheReadTokens)}`));
-		parts.push(theme.fg("success", `${label(config.labels.output, glyphs.output)} ${fmtTokens(telemetry.outputTokens)}`));
+		parts.push(theme.fg("accent", segment(label(config.labels.input, glyphs.input), formatInputBreakdown(telemetry.inputTokens, telemetry.cacheReadTokens))));
+		parts.push(theme.fg("success", segment(label(config.labels.output, glyphs.output), fmtTokens(telemetry.outputTokens))));
 	}
 	if (config.stalls && telemetry.stallMs > 0) {
-		parts.push(theme.fg("warning", `${label(config.labels.stalls, `${glyphs.stall} stall`)} ${telemetry.stallCount}x / ${formatTurnDuration(telemetry.stallMs)}`));
+		parts.push(theme.fg("warning", segment(label(config.labels.stalls, `${glyphs.stall} stall`), `${telemetry.stallCount}x / ${formatTurnDuration(telemetry.stallMs)}`)));
 	}
 	if (config.cost && telemetry.rateUsdPerMTokens !== null) {
-		parts.push(theme.fg("warning", `${label(config.labels.cost, glyphs.cost)} $${telemetry.rateUsdPerMTokens.toFixed(2)}/M`));
+		parts.push(theme.fg("warning", segment(label(config.labels.cost, glyphs.cost), `$${telemetry.rateUsdPerMTokens.toFixed(2)}/M`)));
 	}
 	return parts.join(` ${theme.fg("dim", "|")} `);
 }

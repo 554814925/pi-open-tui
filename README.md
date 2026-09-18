@@ -89,6 +89,7 @@ Run `/open-tui` to open the settings dialog. It provides **General**, **Appearan
     "stalls": true,
     "cost": true,
     "labels": {
+      "tps": "",
       "ttft": "TTFT",
       "duration": "took"
     }
@@ -110,7 +111,7 @@ Key options:
 | `icons.mode` | `auto`, `nerd`, `ascii` | Controls footer and telemetry icons |
 | `footerSegments` | Boolean flags | Shows or hides individual footer data |
 | `telemetry` | Boolean flags | Enables telemetry and its individual measurements |
-| `telemetry.labels` | Strings | Overrides the telemetry segment labels (`tps`, `ttft`, `duration`, `input`, `output`, `stalls`, `cost`); empty values keep the built-in defaults |
+| `telemetry.labels` | Strings | Overrides the telemetry segment labels (`tps`, `ttft`, `duration`, `input`, `output`, `stalls`, `cost`). Unset keeps the built-in default; set to an empty string (`""`) to hide that segment's label |
 | `editor.enabled` | Boolean | When `false`, Pi's native editor is used instead of the framed one; the thinking peek still works |
 | `thinkingPeek.lines` | `0`-`6` | Off, or a 1-6 line hidden thinking preview |
 | `thinkingPeek.headLines` | `0`-`lines` | Opening lines pinned at the top; the remaining rows keep showing the newest content (`0` = newest only) |

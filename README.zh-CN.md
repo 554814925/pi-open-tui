@@ -89,6 +89,7 @@ pi -e npm:pi-open-tui
     "stalls": true,
     "cost": true,
     "labels": {
+      "tps": "",
       "ttft": "首字",
       "duration": "耗时"
     }
@@ -110,7 +111,7 @@ pi -e npm:pi-open-tui
 | `icons.mode` | `auto`、`nerd`、`ascii` | 控制底栏和遥测通知使用的图标 |
 | `footerSegments` | 布尔开关 | 分别控制底栏中的各项数据 |
 | `telemetry` | 布尔开关 | 控制遥测总开关和各项指标 |
-| `telemetry.labels` | 字符串 | 覆盖遥测各段的显示文案（`tps`、`ttft`、`duration`、`input`、`output`、`stalls`、`cost`），留空则使用内置默认 |
+| `telemetry.labels` | 字符串 | 覆盖遥测各段的显示文案（`tps`、`ttft`、`duration`、`input`、`output`、`stalls`、`cost`）。不设置则用内置默认，显式设为空字符串（`""`）则隐藏该段标签 |
 | `editor.enabled` | 布尔值 | 设为 `false` 时不接管输入框，改用 Pi 原生编辑器；思考预览仍然可用 |
 | `thinkingPeek.lines` | `0`-`6` | 关闭，或显示 1-6 行思考预览 |
 | `thinkingPeek.headLines` | `0`-`lines` | 顶部固定展示思考开头的行数，其余行显示最新内容（`0` = 全部显示最新） |

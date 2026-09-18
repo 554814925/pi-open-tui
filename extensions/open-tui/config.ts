@@ -28,14 +28,14 @@ export interface FooterSegments {
 }
 
 export interface TelemetryLabels {
-	/** 留空则使用内置默认（图标 + 英文缩写）。 */
-	tps: string;
-	ttft: string;
-	duration: string;
-	input: string;
-	output: string;
-	stalls: string;
-	cost: string;
+	/** 未设置时用内置默认（图标 + 英文缩写）；显式设为空字符串则隐藏该段标签。 */
+	tps?: string;
+	ttft?: string;
+	duration?: string;
+	input?: string;
+	output?: string;
+	stalls?: string;
+	cost?: string;
 }
 
 export interface TelemetryConfig {
@@ -113,15 +113,7 @@ export const DEFAULT_CONFIG: OpenTuiConfig = {
 		tokens: true,
 		stalls: true,
 		cost: true,
-		labels: {
-			tps: "",
-			ttft: "",
-			duration: "",
-			input: "",
-			output: "",
-			stalls: "",
-			cost: "",
-		},
+		labels: {},
 	},
 	thinkingPeek: {
 		lines: 1,
